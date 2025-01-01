@@ -1,0 +1,2 @@
+We have provided the code for implementing the MVKG model. However, due to the large size of the MIND dataset, we are unable to upload the entire dataset.
+ To execute the code, please download the latest dataset from the official MIND website.

@@ -74,3 +74,4 @@ iterator = MINDAllIterator
 model = NRMSModel(hparams, iterator, seed=seed)
 model.fit(train_news_file, train_behaviors_file, valid_news_file, valid_behaviors_file)
 ```
+Comment: Due to GitHub's resource upload size limit, the current dataset used is the MIND-small dataset. If you require the MIND-Large dataset, please download it from the official website.

@@ -4,6 +4,7 @@ news representations by combining multiple features such as title, abstract, and
 content to further enrich the content of news modeling. In the user encoder, a scalable attention mechanism is used to assign different scores to 
 users’ varying degrees of interest. Finally, the proposed algorithm in this paper and some baseline algorithm are trained and validated on the 
 same public dataset. The results show that the proposed algorithm demonstrates higher performance.
+
 ![image](https://github.com/user-attachments/assets/39cf4542-c815-4d6b-bc4f-aea40b5ec8dd)
 
 

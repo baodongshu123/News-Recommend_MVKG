@@ -26,8 +26,6 @@ from reco_utils.recommender.newsrec.newsrec_utils import get_mind_data_set
 # 2.Parameter configuration
 train_news_file = 'train/news.tsv'
 train_behaviors_file = 'train/behaviors.tsv'
-test_news_file = 'test/news.tsv'
-test_behaviors_file = 'test/behaviors.tsv'
 valid_news_file = 'valid/news.tsv'
 valid_behaviors_file = 'valid/behaviors.tsv'
 wordEmb_file = 'utils/embedding.npy'
@@ -70,4 +68,5 @@ iterator = MINDAllIterator
 # 3.model training
 iterator = MINDAllIterator
 model = NRMSModel(hparams, iterator, seed=seed)
+model.fit(train_news_file, train_behaviors_file, valid_news_file, valid_behaviors_file)
 ```

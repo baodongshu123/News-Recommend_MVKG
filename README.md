@@ -37,7 +37,6 @@ wordDict_file = 'data/utils/word_dict.pkl'
 yaml_file = 'data/utils/mvkg.yaml'
 vertDict_file = 'data/utils/vert_dict.pkl'
 subvertDict_file = 'data/utils/subvert_dict.pkl'
-# entityEmb_file = 'recommenders/dataset/demo_dkn/entity_embeddings_100.npy'
 hparams = prepare_hparams(yaml_file,
                           wordEmb_file=wordEmb_file,
                           wordDict_file=wordDict_file,

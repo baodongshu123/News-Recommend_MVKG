@@ -5,8 +5,6 @@ content to further enrich the content of news modeling. In the user encoder, a s
 users’ varying degrees of interest. Finally, the proposed algorithm in this paper and some baseline algorithm are trained and validated on the 
 same public dataset. The results show that the proposed algorithm demonstrates higher performance.
 
-![image](https://github.com/user-attachments/assets/39cf4542-c815-4d6b-bc4f-aea40b5ec8dd)
-
 
 ```python
 # 1.Required libraries and functions to import
@@ -27,16 +25,19 @@ from reco_utils.recommender.newsrec.newsrec_utils import get_mind_data_set
 ```
 ```python
 # 2.Parameter configuration
-train_news_file = 'train/news.tsv'
-train_behaviors_file = 'train/behaviors.tsv'
-valid_news_file = 'valid/news.tsv'
-valid_behaviors_file = 'valid/behaviors.tsv'
-wordEmb_file = 'utils/embedding.npy'
-userDict_file = 'utils/uid2index.pkl'
-wordDict_file = 'utils/word_dict.pkl'
-yaml_file = 'utils/mvkg.yaml'
-vertDict_file = 'utils/vert_dict.pkl'
-subvertDict_file = 'utils/subvert_dict.pkl'
+train_news_file = 'data/train/news.tsv'
+train_behaviors_file = 'data/train/behaviors.tsv'
+test_news_file = 'data/test/news.tsv'
+test_behaviors_file = 'data/test/behaviors.tsv'
+valid_news_file = 'data/valid/news.tsv'
+valid_behaviors_file = 'data/valid/behaviors.tsv'
+wordEmb_file = 'data/utils/embedding.npy'
+userDict_file = 'data/utils/uid2index.pkl'
+wordDict_file = 'data/utils/word_dict.pkl'
+yaml_file = 'data/utils/mvkg.yaml'
+vertDict_file = 'data/utils/vert_dict.pkl'
+subvertDict_file = 'data/utils/subvert_dict.pkl'
+# entityEmb_file = 'recommenders/dataset/demo_dkn/entity_embeddings_100.npy'
 hparams = prepare_hparams(yaml_file,
                           wordEmb_file=wordEmb_file,
                           wordDict_file=wordDict_file,
@@ -48,12 +49,12 @@ hparams = prepare_hparams(yaml_file,
                          )
 print(hparams)
 hparams.lstm_unit=400
-hparams.entityDict_file = "entity_dict.pkl"
+hparams.entityDict_file = "data\\utils\\entity_dict.pkl"
 hparams.entity_size = 10
-hparams.neighbor_size =50  
+hparams.neighbor_size =50   
 hparams.entity_emb_dim = 100
-hparams.entityEmb_file = "entity_embeddings_100.npy"
-hparams.entity_neighbors_file = "entity_with_neighbors.pkl"
+hparams.entityEmb_file = "data\\utils\\entity_embeddings_100.npy"
+hparams.entity_neighbors_file = "data\\utils\\entity_with_neighbors.pkl"
 hparams.vert_num = 20
 hparams.subvert_num = 249
 hparams.cnn_activation = tf.nn.relu

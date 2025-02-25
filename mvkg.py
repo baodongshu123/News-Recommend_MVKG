@@ -255,21 +255,7 @@ class MVKGModel(BaseModel):
             his_input_title_body_verts
         )
         
-        #(?,?,400)
-        # y = SelfAttentionUser(hparams.head_num, hparams.head_dim, seed=self.seed)(
-        #     [click_news_presents] * 3
-        # )
-        #
-        # short_uemb = AttLayer2(hparams.attention_hidden_dim, seed=self.seed)(
-        #     y
-        # )
-        # short_uemb = layers.Dropout(hparams.dropout)(short_uemb)
-        # user_present = PersonalizedAttentivePooling(
-        #     hparams.his_size,
-        #     hparams.filter_num,
-        #     hparams.attention_hidden_dim,
-        #     seed=self.seed,
-        # )([click_news_presents, layers.Dense(hparams.attention_hidden_dim)(short_uemb)])
+     
         
         user_present = AttLayer2(hparams.attention_hidden_dim, seed=self.seed)(
             click_news_presents
@@ -304,57 +290,27 @@ class MVKGModel(BaseModel):
         vert_repr = self._build_vertencoder()(input_vert)
 
 
-        #co-Att模块
-        coatt = CoAtt(attention_hidden_dim=hparams.attention_hidden_dim, seed=self.seed)([title_cnn, body_mh])  # (?,80,400)
-        # #新闻内容与其标题实体及标题邻居实体的交互
-        title_entity_con = Te_co_Att(entity_embedding_layer=entity_embedding_layer)([coatt, sequence_input_title_entity])  # (?,40,200)
-        title_entity_neighbor_con = Te_co_Att(entity_embedding_layer=entity_embedding_layer)([coatt, sequence_input_title_neighbor])  # (?,90,200)
-        # 使用 tf.concat 进行拼接
-        concatenated_output = tf.concat([title_entity_con, title_entity_neighbor_con], axis=1)
-        title_en_ne_att = AttLayer2(hparams.filter_num, seed=self.seed)(concatenated_output)  # (?,200)
+        coatt = CoAtt(attention_hidden_dim=hparams.attention_hidden_dim,seed=self.seed)([title_cnn,body_mh])#(?,80,400)
+        title_entity_con = Te_co_Att(entity_embedding_layer=entity_embedding_layer)([coatt,sequence_input_title_entity])#(?,40,200)
+        title_entity_neighbor_con = Te_co_Att(entity_embedding_layer=entity_embedding_layer)([title_entity_con,sequence_input_title_neighbor])#(?,90,200)
+        title_en_ne_att = AttLayer2(hparams.filter_num, seed=self.seed)(title_entity_neighbor_con)#(?,200)
         title_en_ne_repr = Reshape_tensor(hparams.filter_num)(title_en_ne_att)
-        # #新闻内容与其摘要实体及摘要邻居实体的交互
         abstract_entity_con = Te_co_Att(entity_embedding_layer=entity_embedding_layer)([coatt, sequence_input_abstract_entity])
-        abstract_entity_neighbor_con = Te_co_Att(entity_embedding_layer=entity_embedding_layer)([coatt, sequence_input_abstract_neighbor])
-        # 使用 tf.concat 进行拼接
-        concatenated_output = tf.concat([abstract_entity_con, abstract_entity_neighbor_con], axis=1)
-        abstract_en_ne_att = AttLayer2(hparams.filter_num, seed=self.seed)(concatenated_output)
+        abstract_entity_neighbor_con = Te_co_Att(entity_embedding_layer=entity_embedding_layer)([abstract_entity_con, sequence_input_abstract_neighbor])
+        abstract_en_ne_att = AttLayer2(hparams.filter_num, seed=self.seed)(abstract_entity_neighbor_con)
         abstract_en_ne_repr = Reshape_tensor(hparams.filter_num)(abstract_en_ne_att)
-
-
-
-
 
         concate_repr = layers.Concatenate(axis=-2)(
             [title_repr, body_repr, vert_repr,title_en_ne_repr,abstract_en_ne_repr]
         )
-        # concate_repr = layers.Concatenate(axis=-2)(
-        #     [title_repr, body_repr]
-        # )
-       #12月8日
-        # concate_repr = layers.Concatenate(axis=-2)(
-        #     [title_en_ne_repr,abstract_en_ne_repr]
-        # )
         
-        # concate_repr = layers.Concatenate(axis=-2)(
-        #     [title_repr, body_repr, vert_repr]
-        # )
         pred_title = AttLayer2(hparams.attention_hidden_dim, seed=self.seed)(concate_repr)
-        # pred_title = tf.reduce_mean(concate_repr, axis=1)
         model = keras.Model(input_title_body_verts, pred_title, name="news_encoder")
         return model
     
 
 
     def _build_titleencoder(self, embedding_layer):
-        """build title encoder of NAML news encoder.
-
-        Args:
-            embedding_layer (object): a word embedding layer.
-
-        Return:
-            object: the title encoder of NAML.
-        """
         hparams = self.hparams
         sequences_input_title = keras.Input(shape=(hparams.title_size,), dtype="int32")
         embedded_sequences_title = embedding_layer(sequences_input_title)
@@ -389,15 +345,6 @@ class MVKGModel(BaseModel):
         embedded_sequences_body = embedding_layer(sequences_input_body)
 
         y = layers.Dropout(hparams.dropout)(embedded_sequences_body)
-
-        # y = layers.Conv1D(
-        #     hparams.filter_num,
-        #     hparams.window_size,
-        #     activation=hparams.cnn_activation,
-        #     padding="same",
-        #     bias_initializer=keras.initializers.Zeros(),
-        #     kernel_initializer=keras.initializers.glorot_uniform(seed=self.seed),
-        # )(y)
         y_1 = SelfAttention(hparams.head_num, hparams.head_dim, seed=self.seed)(
             [y] * 3
         )

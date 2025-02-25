@@ -15,48 +15,18 @@ __all__ = ["MVKGModel"]
 
 
 class MVKGModel(BaseModel):
-    """NRMS model(Neural News Recommendation with Multi-Head Self-Attention)
-
-    Chuhan Wu, Fangzhao Wu, Suyu Ge, Tao Qi, Yongfeng Huang,and Xing Xie, "Neural News
-    Recommendation with Multi-Head Self-Attention" in Proceedings of the 2019 Conference 
-    on Empirical Methods in Natural Language Processing and the 9th International Joint Conference 
-    on Natural Language Processing (EMNLP-IJCNLP)
-
-    Attributes:
-        word2vec_embedding (numpy.ndarray): Pretrained word embedding matrix.
-        hparam (object): Global hyper-parameters.
-    """
-
     def __init__(
         self, hparams, iterator_creator, seed=None,
     ):
-        """Initialization steps for NRMS.
-        Compared with the BaseModel, NRMS need word embedding.
-        After creating word embedding matrix, BaseModel's __init__ method will be called.
-        
-        Args:
-            hparams (object): Global hyper-parameters. Some key setttings such as head_num and head_dim are there.
-            iterator_creator_train (object): NRMS data loader class for train data.
-            iterator_creator_test (object): NRMS data loader class for test and validation data
-        """
         self.word2vec_embedding = self._init_embedding(hparams.wordEmb_file)
         self.entitty2vec_embedding = self._init_embedding(hparams.entityEmb_file)
-
 
         super().__init__(
             hparams, iterator_creator, seed=seed,
         )
 
     def _get_input_label_from_iter(self, batch_data):
-        """ get input and labels for trainning from iterator
-
-        Args: 
-            batch data: input batch data from iterator
-
-        Returns:
-            list: input feature fed into model (clicked_title_batch & candidate_title_batch)
-            numpy.ndarray: labels
-        """
+       
         input_feat = [
             batch_data["clicked_title_batch"],
             batch_data["clicked_ab_batch"],
@@ -77,13 +47,7 @@ class MVKGModel(BaseModel):
         return input_feat, input_label
 
     def _get_user_feature_from_iter(self, batch_data):
-        """ get input of user encoder 
-        Args:
-            batch_data: input batch data from user iterator
-        
-        Returns:
-            numpy.ndarray: input user feature (clicked title batch)
-        """
+       
         input_feature = [
             batch_data["clicked_title_batch"],
             batch_data["clicked_ab_batch"],
@@ -97,13 +61,7 @@ class MVKGModel(BaseModel):
         return input_feature
 
     def _get_news_feature_from_iter(self, batch_data):
-        """ get input of news encoder
-        Args:
-            batch_data: input batch data from news iterator
-        
-        Returns:
-            numpy.ndarray: input news feature (candidate title batch)
-        """
+       
         input_feature = [
             batch_data["candidate_title_batch"],
             batch_data["candidate_ab_batch"],
@@ -117,24 +75,13 @@ class MVKGModel(BaseModel):
         return input_feature
 
     def _build_graph(self):
-        """Build NRMS model and scorer.
-
-        Returns:
-            object: a model used to train.
-            object: a model used to evaluate and inference.
-        """
+      
         hparams = self.hparams
         model, scorer = self._build_nrms()
         return model, scorer
 
     def _build_nrms(self):
-        """The main function to create NRMS's logic. The core of NRMS
-        is a user encoder and a news encoder.
-
-        Returns:
-            object: a model used to train.
-            object: a model used to evaluate and inference.
-        """
+        
         hparams = self.hparams
 
         his_input_title = keras.Input(
@@ -273,14 +220,7 @@ class MVKGModel(BaseModel):
 
         return model, scorer
     def _build_userencoder(self, titleencoder):
-        """The main function to create user encoder of NRMS.
-
-        Args:
-            titleencoder (object): the news encoder of NRMS. 
-
-        Return:
-            object: the user encoder of NRMS.
-        """
+        
         hparams = self.hparams
         his_input_title_body_verts = keras.Input(
             shape=(hparams.his_size, hparams.title_size + hparams.body_size + 1 + hparams.entity_size + hparams.neighbor_size + hparams.entity_size + hparams.neighbor_size),
@@ -318,14 +258,6 @@ class MVKGModel(BaseModel):
 
     def _build_newsencoder(self, embedding_layer,entity_embedding_layer):
 
-        """The main function to create news encoder of NRMS.
-
-        Args:
-            embedding_layer (object): a word embedding layer.
-        
-        Return:
-            object: the news encoder of NRMS.
-        """
         hparams = self.hparams
         input_title_body_verts = keras.Input(shape=(hparams.title_size + hparams.body_size + 1 + hparams.entity_size + hparams.neighbor_size+ hparams.entity_size + hparams.neighbor_size,), dtype="int32")
         sequences_input_title = layers.Lambda(lambda x: x[:, : hparams.title_size])(input_title_body_verts)
@@ -345,73 +277,26 @@ class MVKGModel(BaseModel):
         title_repr,title_cnn = self._build_titleencoder(embedding_layer)(sequences_input_title)
         body_repr,body_mh = self._build_bodyencoder(embedding_layer)(sequences_input_body)
         vert_repr = self._build_vertencoder()(input_vert)
-
-        # ###师兄代码
-        # # #co-Att模块
         coatt = CoAtt(attention_hidden_dim=hparams.attention_hidden_dim,seed=self.seed)([title_cnn,body_mh])#(?,80,400)
-        # #title与其实体及邻居实体的交互
         title_entity_con = Te_co_Att(entity_embedding_layer=entity_embedding_layer)([coatt,sequence_input_title_entity])#(?,40,200)
         title_entity_neighbor_con = Te_co_Att(entity_embedding_layer=entity_embedding_layer)([title_entity_con,sequence_input_title_neighbor])#(?,90,200)
         title_en_ne_att = AttLayer2(hparams.filter_num, seed=self.seed)(title_entity_neighbor_con)#(?,200)
         title_en_ne_repr = Reshape_tensor(hparams.filter_num)(title_en_ne_att)
-        # #abstract与其实体及邻居实体的交互
         abstract_entity_con = Te_co_Att(entity_embedding_layer=entity_embedding_layer)([coatt, sequence_input_abstract_entity])
         abstract_entity_neighbor_con = Te_co_Att(entity_embedding_layer=entity_embedding_layer)([abstract_entity_con, sequence_input_abstract_neighbor])
         abstract_en_ne_att = AttLayer2(hparams.filter_num, seed=self.seed)(abstract_entity_neighbor_con)
         abstract_en_ne_repr = Reshape_tensor(hparams.filter_num)(abstract_en_ne_att)
-
-        # ###自己写的代码MVKG (内容分别与实体和邻居实体交互完成之后，在拼接)
-        # #co-Att模块
-        # coatt = CoAtt(attention_hidden_dim=hparams.attention_hidden_dim, seed=self.seed)([title_cnn, body_mh])  # (?,80,400)
-        # # #新闻内容与其标题实体及标题邻居实体的交互
-        # title_entity_con = Te_co_Att(entity_embedding_layer=entity_embedding_layer)([coatt, sequence_input_title_entity])  # (?,40,200)
-        # title_entity_neighbor_con = Te_co_Att(entity_embedding_layer=entity_embedding_layer)([coatt, sequence_input_title_neighbor])  # (?,90,200)
-        # # 使用 tf.concat 进行拼接
-        # concatenated_output = tf.concat([title_entity_con, title_entity_neighbor_con], axis=1)
-        # title_en_ne_att = AttLayer2(hparams.filter_num, seed=self.seed)(concatenated_output)  # (?,200)
-        # title_en_ne_repr = Reshape_tensor(hparams.filter_num)(title_en_ne_att)
-        # # #新闻内容与其摘要实体及摘要邻居实体的交互
-        # abstract_entity_con = Te_co_Att(entity_embedding_layer=entity_embedding_layer)([coatt, sequence_input_abstract_entity])
-        # abstract_entity_neighbor_con = Te_co_Att(entity_embedding_layer=entity_embedding_layer)([coatt, sequence_input_abstract_neighbor])
-        # # 使用 tf.concat 进行拼接
-        # concatenated_output = tf.concat([abstract_entity_con, abstract_entity_neighbor_con], axis=1)
-        # abstract_en_ne_att = AttLayer2(hparams.filter_num, seed=self.seed)(concatenated_output)
-        # abstract_en_ne_repr = Reshape_tensor(hparams.filter_num)(abstract_en_ne_att)
-
-
-
-
-
         concate_repr = layers.Concatenate(axis=-2)(
             [title_repr, body_repr, vert_repr,title_en_ne_repr,abstract_en_ne_repr]
         )
-        # concate_repr = layers.Concatenate(axis=-2)(
-        #     [title_repr, body_repr]
-        # )
-       #12月8日
-        # concate_repr = layers.Concatenate(axis=-2)(
-        #     [title_en_ne_repr,abstract_en_ne_repr]
-        # )
-        
-        # concate_repr = layers.Concatenate(axis=-2)(
-        #     [title_repr, body_repr, vert_repr]
-        # )
+      
         pred_title = AttLayer2(hparams.attention_hidden_dim, seed=self.seed)(concate_repr)
-        # pred_title = tf.reduce_mean(concate_repr, axis=1)
         model = keras.Model(input_title_body_verts, pred_title, name="news_encoder")
         return model
     
 
 
     def _build_titleencoder(self, embedding_layer):
-        """build title encoder of NAML news encoder.
-
-        Args:
-            embedding_layer (object): a word embedding layer.
-
-        Return:
-            object: the title encoder of NAML.
-        """
         hparams = self.hparams
         sequences_input_title = keras.Input(shape=(hparams.title_size,), dtype="int32")
         embedded_sequences_title = embedding_layer(sequences_input_title)
@@ -433,14 +318,6 @@ class MVKGModel(BaseModel):
         return model
 
     def _build_bodyencoder(self, embedding_layer):
-        """build body encoder of NAML news encoder.
-
-        Args:
-            embedding_layer (object): a word embedding layer.
-
-        Return:
-            object: the body encoder of NAML.
-        """
         hparams = self.hparams
         sequences_input_body = keras.Input(shape=(hparams.body_size,), dtype="int32")
         embedded_sequences_body = embedding_layer(sequences_input_body)
@@ -468,11 +345,6 @@ class MVKGModel(BaseModel):
 
 
     def _build_vertencoder(self):
-        """build vert encoder of NAML news encoder.
-
-        Return:
-            object: the vert encoder of NAML.
-        """
         hparams = self.hparams
         input_vert = keras.Input(shape=(1,), dtype="int32")
 

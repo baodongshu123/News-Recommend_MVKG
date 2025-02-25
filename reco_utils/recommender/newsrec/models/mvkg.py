@@ -257,14 +257,18 @@ class MVKGModel(BaseModel):
         body_repr,body_mh = self._build_bodyencoder(embedding_layer)(sequences_input_body)
         vert_repr = self._build_vertencoder()(input_vert)
         mat = MAt(attention_hidden_dim=hparams.attention_hidden_dim,seed=self.seed)([title_cnn,body_mh])#(?,80,400)
-        title_entity_con = Te_MAt(entity_embedding_layer=entity_embedding_layer)([mat,sequence_input_title_entity])#(?,40,200)
-        title_entity_neighbor_con = Te_MAt(entity_embedding_layer=entity_embedding_layer)([title_entity_con,sequence_input_title_neighbor])#(?,90,200)
-        title_en_ne_att = AttLayer2(hparams.filter_num, seed=self.seed)(title_entity_neighbor_con)#(?,200)
-        title_en_ne_repr = Reshape_tensor(hparams.filter_num)(title_en_ne_att)
-        abstract_entity_con = Te_MAt(entity_embedding_layer=entity_embedding_layer)([mat, sequence_input_abstract_entity])
-        abstract_entity_neighbor_con = Te_MAt(entity_embedding_layer=entity_embedding_layer)([abstract_entity_con, sequence_input_abstract_neighbor])
-        abstract_en_ne_att = AttLayer2(hparams.filter_num, seed=self.seed)(abstract_entity_neighbor_con)
-        abstract_en_ne_repr = Reshape_tensor(hparams.filter_num)(abstract_en_ne_att)
+        from tensorflow.keras.layers import Concatenate  
+        h1_title = Te_MAt(entity_embedding_layer=entity_embedding_layer)([mat, sequence_input_title_entity])  # (?, 40, 200)
+        h2_title = Te_MAt(entity_embedding_layer=entity_embedding_layer)([mat, sequence_input_title_neighbor])  # (?, 90, 200)
+        combined_title = Concatenate(axis=1)([h1_title, h2_title])  # (?, 130, 200)
+        title_en_ne_att = AttLayer2(hparams.filter_num, seed=self.seed)(combined_title)  # (?, 200)
+        title_en_ne_repr = Reshape_tensor(hparams.filter_num)(title_en_ne_att)  # (?, filter_num)
+        h1_abstract = Te_MAt(entity_embedding_layer=entity_embedding_layer)([mat, sequence_input_abstract_entity])  # (?, 40, 200)
+        h2_abstract = Te_MAt(entity_embedding_layer=entity_embedding_layer)([mat, sequence_input_abstract_neighbor])  # (?, 90, 200)
+        combined_abstract = Concatenate(axis=1)([h1_abstract, h2_abstract])  # (?, 130, 200)
+        abstract_en_ne_att = AttLayer2(hparams.filter_num, seed=self.seed)(combined_abstract)  # (?, 200)
+        abstract_en_ne_repr = Reshape_tensor(hparams.filter_num)(abstract_en_ne_att)  # (?, filter_num)
+
         concate_repr = layers.Concatenate(axis=-2)(
             [title_repr, body_repr, vert_repr,title_en_ne_repr,abstract_en_ne_repr]
         )

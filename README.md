@@ -18,7 +18,7 @@ from tempfile import TemporaryDirectory
 import tensorflow as tf
 from reco_utils.recommender.deeprec.deeprec_utils import download_deeprec_resources
 from reco_utils.recommender.newsrec.newsrec_utils import prepare_hparams
-from reco_utils.recommender.newsrec.models.nrms_526 import NRMSModel
+from reco_utils.recommender.newsrec.models.mvkg import MVKGModel
 from reco_utils.recommender.newsrec.io.mind_all_iterator526 import MINDAllIterator
 from reco_utils.recommender.newsrec.newsrec_utils import get_mind_data_set
 
@@ -70,7 +70,9 @@ iterator = MINDAllIterator
 ```python
 # 3.model training
 iterator = MINDAllIterator
-model = NRMSModel(hparams, iterator, seed=seed)
+model = MVKGModel(hparams, iterator, seed=seed)
 model.fit(train_news_file, train_behaviors_file, valid_news_file, valid_behaviors_file)
 ```
+![image](https://github.com/user-attachments/assets/293e4d8c-f03d-4112-aa90-ca66a701c36e)
+
 Comment: Due to GitHub's resource upload size limit, the current dataset used is the MIND-small dataset. If you require the MIND-Large dataset, please download it from the official website.

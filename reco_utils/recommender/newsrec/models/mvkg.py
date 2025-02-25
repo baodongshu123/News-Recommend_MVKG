@@ -1,13 +1,8 @@
-# Copyright (c) Microsoft Corporation. All rights reserved.
-# Licensed under the MIT License.
-
 import numpy as np
 import tensorflow as tf
 import tensorflow.python.keras as keras
 from tensorflow.python.keras import backend as K
 from tensorflow.python.keras import layers
-
-
 from reco_utils.recommender.newsrec.models.base_model import BaseModel
 from reco_utils.recommender.newsrec.models.layers import AttLayer2, SelfAttention,\
     PersonalizedAttentivePooling,AGATLayer,Attention,AttentivePooling,CoAtt,Te_co_Att,Reshape_tensor,SelfAttentionUser
@@ -231,22 +226,6 @@ class MVKGModel(BaseModel):
             his_input_title_body_verts
         )
         
-        #(?,?,400)
-        # y = SelfAttentionUser(hparams.head_num, hparams.head_dim, seed=self.seed)(
-        #     [click_news_presents] * 3
-        # )
-        #
-        # short_uemb = AttLayer2(hparams.attention_hidden_dim, seed=self.seed)(
-        #     y
-        # )
-        # short_uemb = layers.Dropout(hparams.dropout)(short_uemb)
-        # user_present = PersonalizedAttentivePooling(
-        #     hparams.his_size,
-        #     hparams.filter_num,
-        #     hparams.attention_hidden_dim,
-        #     seed=self.seed,
-        # )([click_news_presents, layers.Dense(hparams.attention_hidden_dim)(short_uemb)])
-        
         user_present = AttLayer2(hparams.attention_hidden_dim, seed=self.seed)(
             click_news_presents
         )
@@ -321,17 +300,7 @@ class MVKGModel(BaseModel):
         hparams = self.hparams
         sequences_input_body = keras.Input(shape=(hparams.body_size,), dtype="int32")
         embedded_sequences_body = embedding_layer(sequences_input_body)
-
         y = layers.Dropout(hparams.dropout)(embedded_sequences_body)
-
-        # y = layers.Conv1D(
-        #     hparams.filter_num,
-        #     hparams.window_size,
-        #     activation=hparams.cnn_activation,
-        #     padding="same",
-        #     bias_initializer=keras.initializers.Zeros(),
-        #     kernel_initializer=keras.initializers.glorot_uniform(seed=self.seed),
-        # )(y)
         y_1 = SelfAttention(hparams.head_num, hparams.head_dim, seed=self.seed)(
             [y] * 3
         )
@@ -341,7 +310,6 @@ class MVKGModel(BaseModel):
 
         model = tf.keras.Model(sequences_input_body, [pred_body,y], name="body_encoder")
         return model
-
 
 
     def _build_vertencoder(self):

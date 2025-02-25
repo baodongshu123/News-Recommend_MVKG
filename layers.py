@@ -1,23 +1,11 @@
-# Copyright (c) Microsoft Corporation. All rights reserved.
-# Licensed under the MIT License.
-
 import tensorflow as tf
-# import tensorflow.compat.v1 as tf
 tf.compat.v1.disable_eager_execution()
-
 import tensorflow.keras as keras
 from tensorflow.keras import layers
 from tensorflow.keras import backend as K
 from tensorflow.python.keras.layers import Dense
 class SelfAttentionUser(layers.Layer):
     def __init__(self, multiheads, head_dim, seed=0, mask_right=False, name=None, **kwargs):
-        """Initialization steps for AttLayer2.
-
-        Args:
-            multiheads (int): The number of heads.
-            head_dim (object): Dimention of each head.
-            mask_right (boolean): whether to mask right words.
-        """
 
         # self.multiheads = multiheads
         self.multiheads = 10
@@ -72,21 +60,21 @@ class SelfAttentionUser(layers.Layer):
 
     def call(self, QKVs, **kwargs):
         if len(QKVs) == 3:
-            Q_seq, K_seq, V_seq = QKVs  # (?,50,300)*3
+            Q_seq, K_seq, V_seq = QKVs
             Q_len, V_len = None, None
         elif len(QKVs) == 5:
             Q_seq, K_seq, V_seq, Q_len, V_len = QKVs
         Q_seq_ori = QKVs[0]
-        Q_seq = K.dot(Q_seq, self.WQ)  # (?,50,400)
+        Q_seq = K.dot(Q_seq, self.WQ)
         Q_seq = K.reshape(
             Q_seq, shape=(-1, K.shape(Q_seq)[1], self.multiheads, self.head_dim)
-        )  # (?,?,10,40)
-        Q_seq = K.permute_dimensions(Q_seq, pattern=(0, 2, 1, 3))  # (?,10,?,40)
+        )
+        Q_seq = K.permute_dimensions(Q_seq, pattern=(0, 2, 1, 3))
 
-        K_seq = K.dot(K_seq, self.WK)  # (?,50,400)
+        K_seq = K.dot(K_seq, self.WK)
         K_seq = K.reshape(
             K_seq, shape=(-1, K.shape(K_seq)[1], self.multiheads, self.head_dim)
-        )  # (?,10,?,40)
+        )
         K_seq = K.permute_dimensions(K_seq, pattern=(0, 2, 1, 3))
 
         V_seq = K.dot(V_seq, self.WV)
@@ -97,13 +85,13 @@ class SelfAttentionUser(layers.Layer):
 
         A = tf.matmul(Q_seq, K.permute_dimensions(K_seq,(0,1,3,2))) / K.sqrt(
             K.cast(self.head_dim, dtype="float32")
-        )  # (?,10,?,?)也就是(?,10,50,50)
-        #度矩阵
-        D = tf.matrix_diag([40]*40)#对角线上全是50
-        D = tf.matrix_inverse(tf.cast(D, tf.float32))#D的逆(50,50)
-        DA = tf.matmul(A,D)#D的逆与A相乘(?,10,50,50)
-        DAX = tf.matmul(DA,V_seq)#(?,10,?,40)
-        DAXW = tf.matmul(DAX,self.WDAXW)#(?,10,50,40)
+        )
+
+        D = tf.matrix_diag([40]*40)
+        D = tf.matrix_inverse(tf.cast(D, tf.float32))
+        DA = tf.matmul(A,D)
+        DAX = tf.matmul(DA,V_seq)
+        DAXW = tf.matmul(DAX,self.WDAXW)
         O_seq = keras.layers.ReLU()(DAXW)
 
         O_seq = K.permute_dimensions(O_seq, pattern=(0, 2, 1, 3))  # (?,?,10,40)
@@ -114,11 +102,6 @@ class SelfAttentionUser(layers.Layer):
         return O_seq
 
     def get_config(self):
-        """ add multiheads, multiheads and mask_right into layer config.
-
-        Returns:
-            dict: config of SelfAttention layer.
-        """
         config = super(SelfAttention, self).get_config()
         config.update(
             {
@@ -155,19 +138,15 @@ class Te_co_Att(layers.Layer):
         entity_input = inputs[1]  # (?,10)
         entity_input = keras.backend.cast(entity_input,"float32")
         entity_emb = self.entity_embedding_layer(entity_input)  # (?,10,100)
-        # 先self-attention，
         entity_dense = self.dense200(entity_emb)  # (?,10,200)
         entity_att = keras.layers.Dot(axes=-1)([entity_dense, entity_dense])
         entity_softmax = keras.layers.Softmax()(keras.layers.Dense(1)(entity_att))
         entity_self_repr = entity_softmax * entity_dense  # (?,10,200)
-
-        # 将entity与title做交互，最后把其结果与abstract做交互
         title_input = self.dense2002(title_input)  # (?,30,200)
         cross_att = keras.layers.Dot(axes=-1)([title_input, entity_self_repr])  # (?,30,10)
         cross_att_entity = keras.layers.Softmax()(cross_att)  # (?,30,10)
         cross_att_entity = keras.layers.Dot(axes=[-1, -2])([cross_att_entity, entity_self_repr])  # (?,30,200)
         cross_att_entity = cross_att_entity + title_input
-
         cross_att_title = keras.layers.Softmax()(
             keras.layers.Lambda(lambda x: K.permute_dimensions(x, (0, 2, 1)))(cross_att))
         cross_att_title = keras.layers.Dot(axes=[-1, -2])([cross_att_title, title_input])  # (?,10,200)
@@ -212,23 +191,8 @@ class CoAtt(layers.Layer):
       abstract_input = inputs[1]
       repr = keras.layers.Concatenate(axis=1)([title_input, abstract_input])
       entity_vecs = SelfAttention(20,20,seed=0)([repr, repr, repr])
-      # entity_vecs1 = SelfAttention(20,20,seed=0)([entity_vecs,entity_vecs,entity_vecs])
       entity_vecs1 = keras.layers.Dropout(0.2)(entity_vecs)
-      # entity_concat = AttentivePooling(seed=1)(entity_vecs1)#(?,1,400)
 
-      # abstract_vecs = SelfAttention(20,20,seed=0)([abstract_input, abstract_input, abstract_input])
-      # abstract_vecs1 = keras.layers.Dropout(0.2)(abstract_vecs)
-      # abstract_concat = AttentivePooling(seed=1)(abstract_vecs1)
-
-      # concat_att = keras.layers.Add()([entity_concat,abstract_concat])
-      # concat_att = keras.backend.squeeze(concat_att,axis=-2)
-      # title_out = keras.layers.Dot(axes=[-1, -1])([concat_att, title_input])
-      # title_out_softmax = keras.layers.Softmax()(title_out)
-      # title_repr = keras.layers.Reshape([30, 1])(title_out_softmax) * title_input
-      # abstract_out = keras.layers.Dot(axes=[-1, -1])([concat_att, abstract_input])
-      # abstract_out_softmax = keras.layers.Softmax()(abstract_out)
-      # abstract_repr = keras.layers.Reshape([50, 1])(abstract_out_softmax) * abstract_input
-      # repr = keras.layers.Concatenate(axis=1)([title_repr,abstract_repr])
       return entity_vecs1
     def compute_output_shape(self, input_shape):
         return (input_shape[0][0],input_shape[0][1]+input_shape[1][1],self.attention_hidden_dim*2)
@@ -271,14 +235,11 @@ class Attention(layers.Layer):
                 return inputs - (1 - mask) * 1e12
 
     def call(self, x):
-        # 如果只传入Q_seq,K_seq,V_seq，那么就不做Mask
-        # 如果同时传入Q_seq,K_seq,V_seq,Q_len,V_len，那么对多余部分做Mask
         if len(x) == 3:
             Q_seq, K_seq, V_seq = x
             Q_len, V_len = None, None
         elif len(x) == 5:
             Q_seq, K_seq, V_seq, Q_len, V_len = x
-        # 对Q、K、V做线性变换
 
         Q_seq1 = K.dot(Q_seq, self.WQ)
         Q_seq1 = K.reshape(Q_seq1, (-1, K.shape(Q_seq1)[1], self.size_per_head))
@@ -289,18 +250,15 @@ class Attention(layers.Layer):
         V_seq1 = K.dot(V_seq, self.WV)
         V_seq1 = K.reshape(V_seq1, (-1, K.shape(V_seq1)[1], self.size_per_head))
         V_seq1 = K.permute_dimensions(V_seq1, (0, 1,2))
-        # 计算内积，然后mask，然后softmax
         A = K.batch_dot(Q_seq1, K_seq1, axes=[2, 2]) / self.size_per_head ** 0.5
         A = K.permute_dimensions(A, (0, 2,1))
         A = self.Mask(A, V_len, 'add')
         A = K.permute_dimensions(A, (0, 2, 1))
         A = K.softmax(A)
-        # 输出并mask
         O_seq1 = K.batch_dot(A, V_seq1, axes=[2,1])
         O_seq1 = K.permute_dimensions(O_seq1, (0,1,2))
         O_seq1 = K.reshape(O_seq1, (-1, K.shape(O_seq1)[1], self.output_dim))
         O_seq1 = self.Mask(O_seq1, Q_len, 'mul')
-
         Q_seq2 = K.dot(Q_seq, self.WQ)
         Q_seq2 = K.reshape(Q_seq2, (-1, K.shape(Q_seq2)[1], self.size_per_head))
         Q_seq2 = K.permute_dimensions(Q_seq2, (0, 1, 2))
@@ -310,13 +268,11 @@ class Attention(layers.Layer):
         V_seq2 = K.dot(V_seq, self.WV)
         V_seq2 = K.reshape(V_seq2, (-1, K.shape(V_seq2)[1], self.size_per_head))
         V_seq2 = K.permute_dimensions(V_seq2, (0, 1, 2))
-        # 计算内积，然后mask，然后softmax
         A = K.batch_dot(Q_seq2, K_seq2, axes=[2, 2]) / self.size_per_head ** 0.5
         A = K.permute_dimensions(A, (0, 2, 1))
         A = self.Mask(A, V_len, 'add')
         A = K.permute_dimensions(A, (0, 2, 1))
         A = K.softmax(A)
-        # 输出并mask
         O_seq2 = K.batch_dot(A, V_seq2, axes=[2, 1])
         O_seq2 = K.permute_dimensions(O_seq2, (0, 1, 2))
         O_seq2 = K.reshape(O_seq2, (-1, K.shape(O_seq2)[1], self.output_dim))
@@ -350,18 +306,15 @@ class AGATLayer(keras.layers.Layer):
 
         entity_ed = keras.backend.expand_dims(entity, axis=-1)
         neighbors_ed = keras.backend.expand_dims(neighbors, axis=-1)
-        a_uk = keras.layers.Dot(axes=-1)([entity_ed, neighbors_ed])  # (?,10,50)执行交互操作
-        e_a = keras.backend.mean(a_uk, axis=-1)  # (?,10)#求出注意力权重
-        n_a = keras.backend.mean(a_uk, axis=-2)  # (?,50)#求出邻居的注意力权重
-        # e_a * entity = (?,10)
+        a_uk = keras.layers.Dot(axes=-1)([entity_ed, neighbors_ed])
+        e_a = keras.backend.mean(a_uk, axis=-1)
+        n_a = keras.backend.mean(a_uk, axis=-2)
         e_as = keras.layers.Softmax(axis=-1)(e_a)
         e_dense = keras.backend.tanh(e_as)
-        entity_concat = keras.layers.multiply([e_dense, entity]) + entity# 取名entity_ed，可以反复更新，得到赋了权重的entity
-        # n_a * neighbors = (?,50)
+        entity_concat = keras.layers.multiply([e_dense, entity]) + entity
         n_as = keras.layers.Softmax(axis=-1)(n_a)
         n_dense = keras.backend.tanh(n_as)
-        neighbors_concat = keras.layers.multiply([n_dense, n_as]) + neighbors  # 取名neighbor_ed，可以反复更新，得到赋了权重的neighbor
-        # 两个交互
+        neighbors_concat = keras.layers.multiply([n_dense, n_as]) + neighbors
         entity_repr_concat = keras.layers.concatenate([entity,entity_concat,entity*entity_concat,entity-entity_concat])
         neighbors_repr_concat = keras.layers.concatenate([neighbors,neighbors_concat,neighbors*neighbors_concat,neighbors-neighbors_concat])
         entity_reshape = keras.layers.Reshape([-1,self.entity_size])(entity_repr_concat)
@@ -379,7 +332,6 @@ class AttLayer2(layers.Layer):
     Attributes:
         dim (int): attention hidden dim
     """
-    # gamma_initializer = "ones"
     def __init__(self, dim=200, seed=0, name="AttLayer", gamma_initializer = "ones",**kwargs):
         """Initialization steps for AttLayer2.
         
@@ -391,13 +343,12 @@ class AttLayer2(layers.Layer):
         self.seed = seed
         self.att_name = name
         super(AttLayer2, self).__init__(**kwargs)
-        # # 自己加的缩放因子
         self.gamma = self.add_weight(
             shape=(),
             initializer=gamma_initializer,
             trainable=True,
             name="gamma",
-            dtype=self.dtype,  # 使用 self.dtype 获取当前层的数据类型
+            dtype=self.dtype,
         )
 
     def build(self, input_shape):
@@ -428,7 +379,7 @@ class AttLayer2(layers.Layer):
             initializer=keras.initializers.glorot_uniform(seed=self.seed),
             trainable=True,
         )
-        super(AttLayer2, self).build(input_shape)  # be sure you call this somewhere!
+        super(AttLayer2, self).build(input_shape)
 
     def call(self, inputs, mask=None, **kwargs):
         """Core implemention of soft attention
@@ -457,7 +408,6 @@ class AttLayer2(layers.Layer):
         attention_weight = K.expand_dims(attention_weight)
         weighted_input = inputs * attention_weight
 
-        # 缩放因子加残差连接
         weighted_input=self.gamma*weighted_input
 
         return K.sum(weighted_input, axis=1)
@@ -528,14 +478,6 @@ class SelfAttention(layers.Layer):
         self.seed = seed
         self.self_name = name
         super(SelfAttention, self).__init__(**kwargs)
-
-        # self.gamma = self.add_weight(
-        #     shape=(),
-        #     initializer=gamma_initializer,
-        #     trainable=True,
-        #     name="gamma",
-        #     dtype=self.dtype,  # 使用 self.dtype 获取当前层的数据类型
-        # )
 
 
     def compute_output_shape(self, input_shape):
@@ -635,13 +577,10 @@ class SelfAttention(layers.Layer):
         )
         V_seq = K.permute_dimensions(V_seq, pattern=(0, 2, 1, 3))
 
-        # A = K.batch_dot(Q_seq, K_seq, axes=[3, 3]) / K.sqrt(
-        #     K.cast(self.head_dim, dtype="float32")
-        # )
         A = tf.matmul(Q_seq, K.permute_dimensions(K_seq,(0,1,3,2)))
         A = K.permute_dimensions(
             A, pattern=(0, 3, 2, 1)
-        )  # A.shape=[batch_size,K_sequence_length,Q_sequence_length,self.multiheads]
+        )
 
         A = self.Mask(A, V_len, "add")
         A = K.permute_dimensions(A, pattern=(0, 3, 2, 1))
@@ -652,12 +591,7 @@ class SelfAttention(layers.Layer):
             mask = (ones - lower_triangular) * 1e12
             A = A - mask
         A = K.softmax(A)
-
-        # O_seq = K.batch_dot(A, V_seq, axes=[3, 2])
         O_seq = tf.matmul(A, V_seq)
-
-
-        # O_seq = tf.einsum('bhjk,bkhd->bjhd',A,V_seq)
         O_seq = K.permute_dimensions(O_seq, pattern=(0, 2, 1, 3))
 
         O_seq = K.reshape(O_seq, shape=(-1, K.shape(O_seq)[1], self.output_dim))
@@ -694,13 +628,11 @@ def PersonalizedAttentivePooling(dim1, dim2, dim3, seed=0):
         object: weighted summary of inputs value.
     """
 
-    #shape=(?,30,400)
     vecs_input = keras.Input(shape=(dim1, dim2))
-    #shape=(?,200)
     query_input = keras.Input(shape=(dim3,))
 
     user_vecs = vecs_input
-    user_att = layers.Dense(#(?,50,200)
+    user_att = layers.Dense(
         dim3,
         activation="tanh",
         kernel_initializer=keras.initializers.glorot_uniform(seed=seed),
@@ -708,9 +640,7 @@ def PersonalizedAttentivePooling(dim1, dim2, dim3, seed=0):
     )
     user_att = user_att((user_vecs))
     user_att2 = layers.Dot(axes=-1)([query_input, user_att])#(?,50)
-    # user_att_4 = layers.Activation("softmax")(user_att2)
     user_att_4 = layers.Activation("softmax")(user_att2)
-    # user_att_3 = tf.log(user_att_4)
     user_vec = layers.Dot((1, 1))([user_vecs, user_att_4])
 
     model = keras.Model([vecs_input, query_input], user_vec)
@@ -726,7 +656,7 @@ def ChannelAttention(dim1,dim2,r=5,seed=0):
     user_vecs = layers.Dropout(0.2)(vecs_input)
     globbal_vector = keras.backend.mean(user_vecs,2,keepdims=True)
     u_input = layers.Reshape((1,dim1))(globbal_vector)
-    fc1_avg = layers.Dense(#(?,50,200)
+    fc1_avg = layers.Dense(
         int(dim1/r),
         activation="relu",
     )(u_input)
@@ -736,7 +666,7 @@ def ChannelAttention(dim1,dim2,r=5,seed=0):
 
     globbal_vector2 = keras.backend.max(user_vecs,2,keepdims=True)
     u_input = layers.Reshape((1,dim1))(globbal_vector2)
-    fc1_max = layers.Dense(  # (?,50,200)
+    fc1_max = layers.Dense(
         int(dim1 / r),
         activation="relu"
     )(u_input)

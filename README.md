@@ -73,6 +73,7 @@ iterator = MINDAllIterator
 model = MVKGModel(hparams, iterator, seed=seed)
 model.fit(train_news_file, train_behaviors_file, valid_news_file, valid_behaviors_file)
 ```
-![image](https://github.com/user-attachments/assets/293e4d8c-f03d-4112-aa90-ca66a701c36e)
+![image](https://github.com/user-attachments/assets/b4ccd4c1-7d6d-4040-b3c5-2a8d9ecea6ab)
+
 
 Comment: Due to GitHub's resource upload size limit, the current dataset used is the MIND-small dataset. If you require the MIND-Large dataset, please download it from the official website.

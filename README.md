@@ -1,4 +1,4 @@
-# MVKG：ulti-View Personalized News Recommendation Method Integrating Scalable Attention and Knowledge Graphs
+# MVKG：Multi-View Personalized News Recommendation Method Integrating Scalable Attention and Knowledge Graphs
 MVKG integrates scaled attention mechanisms with knowledge graphs to enhance performance. During the news encoder phase, the algorithm jointly learns
 news representations by combining multiple features such as title, abstract, and category. Furthermore, it interacts knowledge entities with news 
 content to further enrich the content of news modeling. In the user encoder, a scalable attention mechanism is used to assign different scores to 
